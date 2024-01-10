@@ -1,0 +1,59 @@
+{
+	"name": "Smode",
+	"type": "HTTP",
+	"path": "Smode",
+	"version": "0.0.1",
+	"description": "Control Smode Software",
+	"hasInput": true,
+	"hasOutput": true,
+	"hideDefaultCommands": false,
+	"hideDefaultParameters": [
+		"protocol",
+		"authentication"
+	],
+	"parameters": {},
+	"defaults": {
+		"baseAddress": "http://127.0.0.1:8080",
+		"protocol": "JSON"
+	},
+	"scripts": [
+		"Smode.js"
+	],
+	"values": {
+		"Application": {
+			"type": "Container",
+			"On AIR": {
+				"type": "Boolean"
+			},
+			"Output": {
+				"type": "Boolean"
+			},
+			"Eco mode": {
+				"type": "Boolean"
+			},
+			"Sofware version": {
+				"type": "String"
+			}
+		},
+		"Devices": {
+			"type": "Container",
+			"Refresh Devices List": {
+				"type": "Trigger"
+			}
+		}
+	},
+	"commands": {
+		"On Air": {
+			"menu": "",
+			"callback": "onAir"
+		},
+		"Output": {
+			"menu": "",
+			"callback": "output"
+		},
+		"Eco Mode": {
+			"menu": "",
+			"callback": "ecoMode"
+		}
+	}
+}
