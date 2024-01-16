@@ -9,51 +9,30 @@
 	"hideDefaultCommands": false,
 	"hideDefaultParameters": [
 		"protocol",
-		"authentication"
+		"authentication",
+		"clearValues"
 	],
-	"parameters": {},
+	"parameters": {
+		"update": {
+			"type": "Trigger"
+		},
+		"Debug": {
+			"type": "Boolean"
+		}
+	},
 	"defaults": {
 		"baseAddress": "http://127.0.0.1:8080",
-		"protocol": "JSON"
+		"protocol": "JSON",
+		"autoAdd": "false",
+		"Debug": "true"
 	},
 	"scripts": [
 		"Smode.js"
 	],
 	"values": {
-		"Application": {
-			"type": "Container",
-			"On AIR": {
-				"type": "Boolean"
-			},
-			"Output": {
-				"type": "Boolean"
-			},
-			"Eco mode": {
-				"type": "Boolean"
-			},
-			"Sofware version": {
-				"type": "String"
-			}
-		},
-		"Devices": {
-			"type": "Container",
-			"Refresh Devices List": {
-				"type": "Trigger"
-			}
+		"contents": {
+			"type": "Container"
 		}
 	},
-	"commands": {
-		"On Air": {
-			"menu": "",
-			"callback": "onAir"
-		},
-		"Output": {
-			"menu": "",
-			"callback": "output"
-		},
-		"Eco Mode": {
-			"menu": "",
-			"callback": "ecoMode"
-		}
-	}
+	"commands": {}
 }
