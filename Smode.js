@@ -9,19 +9,24 @@ var patchBody = {};
 patchBody.dataType = "json";
 patchBody.extraHeaders = "Content-Type: application/json";
 
+var smodeParameters = [];
 
 function init() {
 	local.parameters.debug.set(true);
+
 }
 function dataEvent(data, requestURL) {
 
 	for (i = 0; i < data.length; i++) {
-		local.values.contents.addContainer(data[i].label);
-		container = local.values.contents.getChild(data[i].label);
-		container.addStringParameter("uuid", "", data[i].uuid);
-		container.addStringParameter("label", "", data[i].label);
-		container.addColorParameter("color label", "", [data[i].colorLabel.red, data[i].colorLabel.green, data[i].colorLabel.blue]);
-		container.addBoolParameter("loading", "", data[i].loading);
+		container = local.values.contents.addContainer(data[i].label);
+
+		sceneId = container.addStringParameter("uuid", "", data[i].uuid);
+		sceneId.setAttribute("enabled", false);
+		sceneActivation = container.addBoolParameter("activation", "", data[i].activation);
+		sceneLoading = container.addBoolParameter("loading", "", data[i].loading);
+
+		addEntryInParameters(sceneLoading, data[i].class, data[i].uuid, "loading");
+		addEntryInParameters(sceneActivation, data[i].class, data[i].uuid, "activation");
 
 		/****************Process Parameter Banks*************** */
 		for (b = 0; b < data[i].parameterBanks.length; b++) {
@@ -30,14 +35,23 @@ function dataEvent(data, requestURL) {
 			parameterBanksContainer = container.getChild(bankName);
 
 			exposedParameters = data[i].parameterBanks[b].parameters;
-			//debug(exposedParameters.length);
+
 			if (exposedParameters.length > 0) {
 				debug(bankName + " have exposed Parameters");
 				for (p = 0; p < exposedParameters.length; p++) {
 					transposeParameter(exposedParameters[p], parameterBanksContainer);
 				}
 			}
+		}
 
+		/**************************Process Main Timelines	********* */
+		if ((data[i].label != "Show") && (data[i].animationUuid != "00000000-0000-0000-0000-000000000000")) {
+			timeline = container.addContainer("Main Timeline");
+			play = timeline.addBoolParameter("Play", "", false);
+			playMode = timeline.addEnumParameter("Play Mode", 0, "forward", 1, "backward", 2, "Ping Pong", 3, "Reverse Ping Pong"); // Fix Me: do not works because of index problems...
+
+			addEntryInParameters(play, "Trigger", data[i].animationUuid, "transport.playing");
+			addEntryInParameters(playMode, "Cue Play Mode", data[i].animationUuid, "parameters.playMode");
 		}
 		local.values.contents.setCollapsed(false);
 		container.setCollapsed(false);
@@ -46,64 +60,97 @@ function dataEvent(data, requestURL) {
 }
 
 function transposeParameter(obj, container) {
+	var v;
+	debug(obj.label + " : " + obj.value);
 	if (obj.class == "Color") {
-		container.addColorParameter(obj.label, "", [0, 0, 0, 0]);
+		v = container.addColorParameter(obj.label, "", [0, 0, 0, 0]);
 	} else if (obj.class == "Number") {
-		container.addIntParameter(obj.label, "", obj);
+		v = container.addIntParameter(obj.label, "", obj.value);
 	} else if (obj.class == "On/off option") {
-		container.addBoolParameter(obj.label, "", obj);
+		v = container.addBoolParameter(obj.label, "", obj);
 	} else if (obj.class == "3D Position") {
-		container.addPoint3DParameter(obj.label, "", obj);
+		v = container.addPoint3DParameter(obj.label, "", obj);
 	} else if (obj.class == "Percentage") {
-		container.addFloatParameter(obj.label, "", obj, 0, 1);
+		v = container.addFloatParameter(obj.label, "", obj.value, 0, 1);
 	}
 	else if (obj.class == "Percentage (-100% - 100%)") {
-		container.addFloatParameter(obj.label, "", obj, -1, 1);
+		v = container.addFloatParameter(obj.label, "", obj, -1, 1);
 	}
-	else if (obj.class == "Angle (0 - 360 deg)") {
-		container.addFloatParameter(obj.label, "", obj, 0, 360);
+	else if (obj.class == "Multi-line Text") {
+		v = container.addStringParameter(obj.label, "", obj.value);
 	}
 	else if (obj.class == "Positive Number") {
-		container.addIntParameter(obj.label, "", obj, 0);
+		v = container.addIntParameter(obj.label, "", obj, 0);
 	} else if ((obj.class == "2D Position") || (obj.class == "2D Size in Unbounded Percentage")) {
-		container.addPoint2DParameter(obj.label, "", obj);
+		v = container.addPoint2DParameter(obj.label, "", obj);
 	}
 	else {
-		container.addStringParameter(obj.label, " ", "unknown parameter type:" + obj.class);
-		//container.getChild(obj.label).setAttribute("enabled", false);
+		v = container.addStringParameter(obj.label.replace(" ", ""), " ", "unknown parameter type:" + obj.class);
+		v.setAttribute("enabled", false);
+
 	}
+	addEntryInParameters(v, obj.class, obj.uuid, "value");
 }
+
+function addEntryInParameters(v, cl, id, path) {
+	smodeParameters.push({ chataigneValue: v, smodeClass: cl, apiPath: path, smodeUuid: id });
+	debug(smodeParameters.length);
+}
+
 
 function moduleParameterChanged(param) {
 	if (param.name == "update") {
 		timerBetweenDataAndValues = 0;
-		//local.parameters.autoAdd.set(true);
+
 		local.values.removeContainer("contents");
 		local.values.addContainer("contents");
 		local.sendGET("/api/live/contents/");
 
-		//local.parameters.autoAdd.set(false);
-		local.values.setCollapsed(false);
-	}
-	if (param.name == "clearValues") {
-		local.values.setCollapsed(true);
 
+		smodeParameters = [{ chataigneValue: "" }, { smodeClass: "" }];
+		local.values.setCollapsed(false);
 	}
 }
 
 function moduleValueChanged(value) {
 	if ((timerBetweenDataAndValues > 25)) {
-		uid = JSON.stringify(getUid(value));
+		uid = "";
 		var variablePath = value.name;
-		var request = "/api/live/objects/" + getUid(value) + "?variablePath=" + variablePath; ///api/live/objects/00000000-0000-4000-8000-000000000001?variablePath=configuration.autoSave.enable
-		patch(request, value);
+		var request = "";
+
+		for (i = 0; i < smodeParameters.length; i++) {
+			if (value == smodeParameters[i].chataigneValue) {
+				debug("calling a Smode object of type: " + smodeParameters[i].smodeClass);
+				uid = smodeParameters[i].smodeUuid;
+				variablePath = smodeParameters[i].apiPath;
+				request = "/api/live/objects/" + uid + "?variablePath=" + variablePath;
+
+				if (smodeParameters[i].smodeClass == "Color") {
+					patchColor(request, value);
+				} else {
+					patch(request, value);
+				}
+			}
+		}
 	}
 }
+
+function patchColor(request, value) {
+	baseReq = request + ".red";
+	patchBody.payload = { value: value.get()[0] };
+	local.sendPATCH(baseReq, patchBody);
+	baseReq = request + ".green";
+	patchBody.payload = { value: value.get()[1] };
+	local.sendPATCH(baseReq, patchBody);
+	baseReq = request + ".blue";
+	patchBody.payload = { value: value.get()[2] };
+	local.sendPATCH(baseReq, patchBody);
+	baseReq = request + ".alpha";
+	patchBody.payload = { value: value.get()[3] };
+	local.sendPATCH(baseReq, patchBody);
+}
 function patch(request, value) {
-	//debug("Patch Function:");
 	patchBody.payload = { value: value.get() };
-	//debug(request);
-	//debug("value:" + value.get());
 	local.sendPATCH(request, patchBody);
 }
 
