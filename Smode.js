@@ -10,6 +10,7 @@ patchBody.dataType = "json";
 patchBody.extraHeaders = "Content-Type: application/json";
 
 var smodeParameters = [];
+var smodeMarkers = [];
 
 function init() {
 	local.parameters.debug.set(true);
@@ -37,7 +38,6 @@ function dataEvent(data, requestURL) {
 			exposedParameters = data[i].parameterBanks[b].parameters;
 
 			if (exposedParameters.length > 0) {
-				debug(bankName + " have exposed Parameters");
 				for (p = 0; p < exposedParameters.length; p++) {
 					transposeParameter(exposedParameters[p], parameterBanksContainer);
 				}
@@ -52,6 +52,17 @@ function dataEvent(data, requestURL) {
 
 			addEntryInParameters(play, "Trigger", data[i].animationUuid, "transport.playing");
 			addEntryInParameters(playMode, "Cue Play Mode", data[i].animationUuid, "parameters.playMode");
+
+			actionsArray = data[i].actions;
+
+			for (j = 0; j < actionsArray.length; j++) {
+				debug(actionsArray[j].class);
+				if (actionsArray[j].class == "TimeMarker") {
+					gotoMarker = timeline.addTrigger("Goto" + actionsArray[j].label, actionsArray[j].uuid);
+					addEntryInMarkers(gotoMarker, actionsArray[j].class, data[i].animationUuid, actionsArray[j].uuid);
+				}
+			}
+
 		}
 		local.values.contents.setCollapsed(false);
 		container.setCollapsed(false);
@@ -61,7 +72,7 @@ function dataEvent(data, requestURL) {
 
 function transposeParameter(obj, container) {
 	var v;
-	debug(obj.label + " : " + obj.value);
+
 	if (obj.class == "Color") {
 		v = container.addColorParameter(obj.label, "", [0, 0, 0, 0]);
 	} else if (obj.class == "Number") {
@@ -94,9 +105,12 @@ function transposeParameter(obj, container) {
 
 function addEntryInParameters(v, cl, id, path) {
 	smodeParameters.push({ chataigneValue: v, smodeClass: cl, apiPath: path, smodeUuid: id });
-	debug(smodeParameters.length);
+	//debug(smodeParameters.length);
 }
 
+function addEntryInMarkers(v, cl, timelineId, id) {
+	smodeMarkers.push({ chataigneValue: v, smodeClass: cl, timelineId: timelineId, markerId: id });
+}
 
 function moduleParameterChanged(param) {
 	if (param.name == "update") {
@@ -105,8 +119,6 @@ function moduleParameterChanged(param) {
 		local.values.removeContainer("contents");
 		local.values.addContainer("contents");
 		local.sendGET("/api/live/contents/");
-
-
 		smodeParameters = [{ chataigneValue: "" }, { smodeClass: "" }];
 		local.values.setCollapsed(false);
 	}
@@ -132,6 +144,15 @@ function moduleValueChanged(value) {
 				}
 			}
 		}
+
+		for (i = 0; i < smodeMarkers.length; i++) {
+			if (value == smodeMarkers[i].chataigneValue) {
+				debug("calling a Smode maker: " + smodeMarkers[i].smodeClass);
+				request = "/api/live/animations/" + smodeMarkers[i].markerId + "/move";
+				debug(request);
+				post(request, value);
+			}
+		}
 	}
 }
 
@@ -152,6 +173,10 @@ function patchColor(request, value) {
 function patch(request, value) {
 	patchBody.payload = { value: value.get() };
 	local.sendPATCH(request, patchBody);
+}
+
+function post(request, value) {
+	local.sendPOST(request);
 }
 
 function getUid(obj) {

@@ -4,7 +4,7 @@
 	"path": "Smode",
 	"version": "0.0.1",
 	"description": "Control Smode Software",
-	"hasInput": true,
+	"hasInput": true,	
 	"hasOutput": true,
 	"hideDefaultCommands": true,
 	"hideDefaultParameters": [
